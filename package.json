@@ -1,0 +1,25 @@
+{
+  "name": "hexo-yukari",
+  "version": "0.1.0",
+  "description": "日本語の記事に特化した Hexo の関連記事プラグイン。辞書も外部の判定も使わず、記事どうしの相互の近さで関連記事を選ぶ",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "lib/"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "hexo",
+    "hexo-plugin",
+    "related-posts",
+    "japanese",
+    "tf-idf"
+  ],
+  "author": "tsZ",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}
