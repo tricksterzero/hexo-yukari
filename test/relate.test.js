@@ -70,3 +70,34 @@ test('入力の順序を変えても結果が変わらない', () => {
   const b = relate([...docs].reverse(), { count: 2 });
   for (const d of docs) assert.deepEqual(b.get(d.id), a.get(d.id));
 });
+
+// 語は重ならないが、意味ベクトルでは2組に分かれる記事
+const meaning = [
+  { id: 'm1', title: '護石', text: '護石 チェッカー', date: day(1), embedding: [1, 0.1, 0, 0] },
+  { id: 'm2', title: '狩猟笛', text: '狩猟笛 装備', date: day(2), embedding: [0.9, 0.2, 0, 0.1] },
+  { id: 'm3', title: '眼鏡', text: '眼鏡 交換', date: day(3), embedding: [0, 0, 1, 0.1] },
+  { id: 'm4', title: '視力', text: '視力 検査', date: day(4), embedding: [0.1, 0, 0.9, 0.2] },
+];
+
+test('意味ベクトルでは、語を共有しない記事でも話題が近ければ関連記事にする', () => {
+  assert.deepEqual(relate(meaning, { count: 1 }).get('m1'), { related: [], fallback: true });
+  assert.deepEqual(relate(meaning, { count: 1, signal: 'embedding' }).get('m1'), { related: ['m2'], fallback: false });
+  assert.deepEqual(relate(meaning, { count: 1, signal: 'embedding' }).get('m4'), { related: ['m3'], fallback: false });
+});
+
+test('併用では、語を共有しない記事も候補にする', () => {
+  assert.deepEqual(relate(meaning, { count: 1, signal: 'both' }).get('m3'), { related: ['m4'], fallback: false });
+});
+
+test('意味ベクトルを使うときも、入力の順序を変えても結果が変わらない', () => {
+  for (const signal of ['embedding', 'both']) {
+    const a = relate(meaning, { count: 2, signal });
+    const b = relate([...meaning].reverse(), { count: 2, signal });
+    for (const d of meaning) assert.deepEqual(b.get(d.id), a.get(d.id));
+  }
+});
+
+test('意味ベクトルの無い記事があれば、意味ベクトルの信号を使わない', () => {
+  assert.throws(() => relate(docs, { signal: 'embedding' }), /needs embedding/);
+  assert.throws(() => relate(docs, { signal: 'unknown' }), /unknown signal/);
+});
