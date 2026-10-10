@@ -2,7 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { relate } = require('../lib/relate');
+const { relate, selectDiverse, DIVERSITY_POOL } = require('../lib/relate');
 
 const day = (n) => Date.UTC(2026, 0, n);
 
@@ -55,7 +55,6 @@ test('片方向にしか上位に入らない記事にも候補を出す', () =>
   // s1 の上位はシリーズの記事で埋まるが、単発の記事には s1 を出す(相互上位k では関連記事なしになっていた)
   const r = relate(series, { count: 2 });
   assert.deepEqual(r.get('single'), { related: ['s1'], fallback: false });
-  assert.ok(!r.get('s1').related.includes('single'));
 });
 
 test('本文でリンク済みの記事を除いたうえで count 件を埋める', () => {
@@ -69,6 +68,34 @@ test('入力の順序を変えても結果が変わらない', () => {
   const a = relate(docs, { count: 2 });
   const b = relate([...docs].reverse(), { count: 2 });
   for (const d of docs) assert.deepEqual(b.get(d.id), a.get(d.id));
+});
+
+// 類似度の行列を組み立てる(書かなかった組は0.1)
+const simMatrix = (n, pairs) => {
+  const m = Array.from({ length: n }, () => new Array(n).fill(0.1));
+  for (const [a, b, s] of pairs) { m[a][b] = s; m[b][a] = s; }
+  return m;
+};
+
+test('多様性: 選び済みの記事のほうに近い候補は後回しにし、別の方向の候補を採る', () => {
+  // 0 が元の記事。1 と 2 は同じシリーズで互いに近い。3 は別の話題
+  const sim = simMatrix(4, [[0, 1, 0.9], [0, 2, 0.85], [0, 3, 0.6], [1, 2, 0.95], [1, 3, 0.3], [2, 3, 0.3]]);
+  assert.deepEqual(selectDiverse([1, 2, 3], sim, 0, 2), [1, 3]);
+  // 枠が余れば、後回しにした候補で埋める
+  assert.deepEqual(selectDiverse([1, 2, 3], sim, 0, 3), [1, 3, 2]);
+});
+
+test('多様性: 表示件数の DIVERSITY_POOL 倍より後ろの候補は採らない', () => {
+  // 1〜9 は互いに近いシリーズ。10 は別の方向だが、近い順で10番目にある
+  const count = 2;
+  const pairs = [[0, 10, 0.4]];
+  for (let a = 1; a <= 9; a++) {
+    pairs.push([0, a, 1 - a * 0.05]);
+    for (let b = a + 1; b <= 9; b++) pairs.push([a, b, 0.95]);
+  }
+  const ranked = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  assert.ok(ranked.indexOf(10) >= count * DIVERSITY_POOL);
+  assert.deepEqual(selectDiverse(ranked, simMatrix(11, pairs), 0, count), [1, 2]);
 });
 
 // 語は重ならないが、意味ベクトルでは2組に分かれる記事
