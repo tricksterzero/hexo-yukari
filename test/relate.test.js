@@ -18,7 +18,7 @@ const docs = [
   { id: 'alone', title: '誕生日', text: '誕生日 プレゼント', date: day(8) },
 ];
 
-test('相互に上位に入る記事だけを関連記事にし、話題をまたがない', () => {
+test('語を共有する記事を関連記事にし、話題をまたがない', () => {
   const r = relate(docs, { count: 2 });
   assert.deepEqual(new Set(r.get('food1').related), new Set(['food2']));
   assert.deepEqual(new Set(r.get('srv2').related), new Set(['srv1']));
@@ -42,14 +42,27 @@ test('本文でリンク済みの記事は出さず、関連記事が無けれ�
   assert.deepEqual(r.get('food2'), { related: ['food1'], fallback: false });
 });
 
-test('どの記事も count 件を超えて推薦されない', () => {
-  const r = relate(docs, { count: 2 });
-  const inDegree = new Map();
-  for (const { related, fallback } of r.values()) {
-    if (fallback) continue;
-    for (const id of related) inDegree.set(id, (inDegree.get(id) || 0) + 1);
-  }
-  for (const n of inDegree.values()) assert.ok(n <= 2);
+// まとまったシリーズ(s1〜s4)と、s1 とだけ語を1つ共有する単発の記事
+const series = [
+  { id: 's1', title: '耐久ヘル', text: 'ヘル 耐久 セシル 装備 スナイパー 遠征 護石', date: day(1) },
+  { id: 's2', title: '耐久ヘル', text: 'ヘル 耐久 セシル 装備 スナイパー', date: day(2) },
+  { id: 's3', title: '耐久ヘル', text: 'ヘル 耐久 セシル 装備 遠征', date: day(3) },
+  { id: 's4', title: '耐久ヘル', text: 'ヘル 耐久 装備 スナイパー 遠征', date: day(4) },
+  { id: 'single', title: '護石チェッカー', text: '護石 リリース', date: day(5) },
+];
+
+test('片方向にしか上位に入らない記事にも候補を出す', () => {
+  // s1 の上位はシリーズの記事で埋まるが、単発の記事には s1 を出す(相互上位k では関連記事なしになっていた)
+  const r = relate(series, { count: 2 });
+  assert.deepEqual(r.get('single'), { related: ['s1'], fallback: false });
+  assert.ok(!r.get('s1').related.includes('single'));
+});
+
+test('本文でリンク済みの記事を除いたうえで count 件を埋める', () => {
+  const linked = series.map((d) => (d.id === 's2' ? { ...d, links: ['s1'] } : d));
+  const r = relate(linked, { count: 2 });
+  assert.equal(r.get('s2').related.length, 2);
+  assert.ok(!r.get('s2').related.includes('s1'));
 });
 
 test('入力の順序を変えても結果が変わらない', () => {
