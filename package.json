@@ -3,6 +3,14 @@
   "version": "0.2.0",
   "description": "日本語の記事に特化した Hexo の関連記事プラグイン。辞書も外部の判定も使わず、記事どうしの相互の近さで関連記事を選ぶ",
   "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tricksterzero/hexo-yukari.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tricksterzero/hexo-yukari/issues"
+  },
+  "homepage": "https://github.com/tricksterzero/hexo-yukari#readme",
   "files": [
     "index.js",
     "lib/"
@@ -21,5 +29,13 @@
   "license": "MIT",
   "engines": {
     "node": ">=20.19.0"
+  },
+  "peerDependencies": {
+    "@huggingface/transformers": "^4.3.0"
+  },
+  "peerDependenciesMeta": {
+    "@huggingface/transformers": {
+      "optional": true
+    }
   }
 }

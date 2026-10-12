@@ -42,6 +42,17 @@ test('本文でリンク済みの記事は出さず、関連記事が無けれ�
   assert.deepEqual(r.get('food2'), { related: ['food1'], fallback: false });
 });
 
+test('リンク済みの記事で代用するときも、新しい記事を先に並べる', () => {
+  // alone は語を共有する記事が無く、古い food1 と新しい srv2 にリンクしている
+  const linked = docs.map((d) => (d.id === 'alone' ? { ...d, date: day(4), links: ['food1', 'srv2'] } : d));
+  assert.deepEqual(relate(linked, { count: 2 }).get('alone'), { related: ['srv2', 'food1'], fallback: true });
+});
+
+test('count が0以上の整数でなければ例外を投げる', () => {
+  for (const count of [-1, 2.5, '2', null]) assert.throws(() => relate(docs, { count }), /count must be/);
+  for (const d of relate(docs, { count: 0 }).values()) assert.deepEqual(d.related, []);
+});
+
 // まとまったシリーズ(s1〜s4)と、s1 とだけ語を1つ共有する単発の記事
 const series = [
   { id: 's1', title: '耐久ヘル', text: 'ヘル 耐久 セシル 装備 スナイパー 遠征 護石', date: day(1) },
@@ -127,4 +138,10 @@ test('意味ベクトルを使うときも、入力の順序を変えても結�
 test('意味ベクトルの無い記事があれば、意味ベクトルの信号を使わない', () => {
   assert.throws(() => relate(docs, { signal: 'embedding' }), /needs embedding/);
   assert.throws(() => relate(docs, { signal: 'unknown' }), /unknown signal/);
+});
+
+test('意味ベクトルの次元がそろっていないか、数値でない値があれば例外を投げる', () => {
+  const short = meaning.map((d, i) => (i === 0 ? { ...d, embedding: [1, 0] } : d));
+  const nan = meaning.map((d, i) => (i === 0 ? { ...d, embedding: [1, 0, NaN, 0] } : d));
+  for (const input of [short, nan]) assert.throws(() => relate(input, { signal: 'both' }), /needs embedding/);
 });

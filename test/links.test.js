@@ -31,3 +31,29 @@ test('サブディレクトリに置いたサイトでは root を考慮する',
   const resolve = createLinkResolver(posts, { url: 'https://example.jp/blog', root: '/blog/' });
   assert.deepEqual(resolve({ path: 'x.html', _content: '[a](/blog/20200808_hexo.html) [b](/20200808_hexo.html)' }), ['a']);
 });
+
+test('root が日本語でも、エンコードされた root で解決する', () => {
+  const resolve = createLinkResolver(posts, { url: 'https://example.jp', root: '/%E6%97%A5%E8%A8%98/' });
+  assert.deepEqual(resolve({ path: 'x.html', _content: '[a](/日記/20200808_hexo.html)' }), ['a']);
+});
+
+test('パスに % を含む記事があっても止まらず、その記事へのリンクを解決する', () => {
+  const withPercent = [...posts, { _id: 'p', path: '2020/01/01/100%-off/' }];
+  const resolve = createLinkResolver(withPercent, { url: 'https://example.jp', root: '/' });
+  assert.deepEqual(resolve({ path: 'x.html', _content: '[p](/2020/01/01/100%25-off/)' }), ['p']);
+});
+
+test('index.html・末尾のスラッシュ・.html の有無が違う書き方も同じ記事に解決する', () => {
+  const resolve = createLinkResolver(
+    [...posts, { _id: 'e', path: 'entry/index.html' }],
+    { url: 'https://example.jp', root: '/' },
+  );
+  const body = '[e](/entry) [b](/2021/01/24/spitz) [b2](/2021/01/24/spitz/index.html) [a](/20200808_hexo)';
+  assert.deepEqual(new Set(resolve({ path: 'x.html', _content: body })), new Set(['e', 'b', 'a']));
+});
+
+test('インラインコード・HTML コメント・~~~ のコードブロックの中のリンクは拾わない', () => {
+  const resolve = createLinkResolver(posts, { url: 'https://example.jp', root: '/' });
+  const body = '`[コード](/20200808_hexo.html)`\n<!-- [コメント](/2021/01/24/spitz/) -->\n~~~\n{% post_link 記事 %}\n~~~';
+  assert.deepEqual(resolve({ path: 'x.html', _content: body }), []);
+});

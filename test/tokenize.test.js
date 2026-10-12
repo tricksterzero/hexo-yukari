@@ -28,6 +28,19 @@ test('数字だけの語とカタカナ1文字の語は捨てる', () => {
 });
 
 test('コード・タグプラグイン・URL・HTML を取り除き、リンクの文字は残す', () => {
-  const md = '[関連記事](/a.html)\n```js\nconst x = 1;\n```\n{% tweet 123 %}\n<div class="x">本文</div> https://example.com/path';
+  const md = '[関連記事](/a.html)\n```js\nconst x = 1;\n```\n{% tweet 123 %}\n<div class="x">本文</div> https://example.com/path\n~~~\n除く\n~~~';
   assert.equal(stripMarkup(md).replace(/\s+/g, ' ').trim(), '関連記事 本文');
+});
+
+test('タグでない「<」から次の「>」までは消さない', () => {
+  assert.equal(stripMarkup('1 < 2 の比較と、矢印 -> の説明'), '1 < 2 の比較と、矢印 -> の説明');
+});
+
+test('補助平面の漢字も1文字として数える', () => {
+  assert.deepEqual(tokenize('𠮷い', { bigram: false }), []);
+  assert.deepEqual(tokenize('𠮷野家', { bigram: true }), ['𠮷野家', '𠮷野', '野家']);
+});
+
+test('英数字の語の末尾のピリオド・ハイフン・下線は外す', () => {
+  assert.deepEqual(tokenize('Hexo. hexo v1.2. c++ c# node.js', { bigram: false }), ['hexo', 'hexo', 'v1.2', 'c++', 'c#', 'node.js']);
 });
